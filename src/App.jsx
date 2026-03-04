@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 
 // --- DUMMY DATA ---
-// Dalam aplikasi nyata, data ini akan datang dari backend/database
 const DUMMY_USERS = [
   { id: 'u1', name: 'Bapak Owner', role: 'owner', email: 'owner@koperasi.com' },
   { id: 'u2', name: 'Mbak Admin', role: 'admin', email: 'admin@koperasi.com' },
@@ -30,8 +29,9 @@ const formatRupiah = (number) => {
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null); // null means not logged in
+  const [currentUser, setCurrentUser] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activePage, setActivePage] = useState('dashboard'); // State Navigasi Baru
   
   // State for App Data
   const [users, setUsers] = useState(DUMMY_USERS);
@@ -40,11 +40,11 @@ export default function App() {
 
   // Authentication Simulator
   const login = (email, password) => {
-    // Basic simulation: check if user exists by email. Ignoring password for demo simplicity.
     const user = users.find(u => u.email === email);
-    if (user && password === 'admin123') { // Hardcoded password for demo
+    if (user && password === 'admin123') {
       setCurrentUser(user);
       setIsMobileMenuOpen(false);
+      setActivePage('dashboard'); // Reset ke dashboard saat login
       return { success: true };
     } else if (user) {
         return { success: false, message: 'Kata sandi salah.' };
@@ -69,6 +69,8 @@ export default function App() {
         onLogout={logout} 
         isOpen={isMobileMenuOpen} 
         setIsOpen={setIsMobileMenuOpen} 
+        activePage={activePage}
+        setActivePage={setActivePage}
       />
 
       {/* Main Content Area */}
@@ -87,17 +89,34 @@ export default function App() {
         {/* Scrollable Content */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
-             <div className="mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800">
-                  Selamat datang, {currentUser.name} 👋
-                </h2>
-                <p className="text-gray-500">Masuk sebagai: <span className="capitalize font-medium text-blue-600">{currentUser.role}</span></p>
-             </div>
+            
+            {/* Render Dashboard Component */}
+            {activePage === 'dashboard' && (
+              <>
+                <div className="mb-6">
+                  <h2 className="text-2xl font-semibold text-gray-800">
+                    Selamat datang, {currentUser.name} 👋
+                  </h2>
+                  <p className="text-gray-500">Masuk sebagai: <span className="capitalize font-medium text-blue-600">{currentUser.role}</span></p>
+                </div>
+                {currentUser.role === 'member' && <MemberDashboard user={currentUser} loans={loans} transactions={transactions} setLoans={setLoans} />}
+                {currentUser.role === 'admin' && <AdminDashboard users={users} loans={loans} setLoans={setLoans} />}
+                {currentUser.role === 'owner' && <OwnerDashboard users={users} loans={loans} transactions={transactions} />}
+              </>
+            )}
 
-            {/* Role-Based Rendering */}
-            {currentUser.role === 'member' && <MemberDashboard user={currentUser} loans={loans} transactions={transactions} setLoans={setLoans} />}
-            {currentUser.role === 'admin' && <AdminDashboard users={users} loans={loans} setLoans={setLoans} />}
-            {currentUser.role === 'owner' && <OwnerDashboard users={users} loans={loans} transactions={transactions} />}
+            {/* Render Halaman Lain */}
+            {activePage === 'anggota' && <ManageMembers users={users} />}
+            {activePage === 'pinjaman' && <LoanManagement loans={loans} users={users} currentUser={currentUser} />}
+            {activePage === 'transaksi' && <TransactionHistory transactions={transactions} users={users} />}
+            {activePage === 'pengaturan' && (
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
+                <Settings className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900">Pengaturan</h3>
+                <p className="mt-1 text-gray-500">Fitur pengaturan sedang dalam tahap pengembangan.</p>
+              </div>
+            )}
+            
           </div>
         </main>
       </div>
@@ -128,7 +147,6 @@ function LoginScreen({ onLogin }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 relative overflow-hidden">
-      {/* Background Decorations */}
       <div className="absolute top-0 left-0 w-full h-96 bg-[#0f172a] transform -skew-y-6 origin-top-left -z-10 shadow-2xl"></div>
       
       <div className="bg-white p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-md border border-gray-100 z-10">
@@ -181,7 +199,6 @@ function LoginScreen({ onLogin }) {
           </button>
         </form>
 
-        {/* Demo Helper */}
         <div className="mt-8 pt-6 border-t border-gray-100">
            <p className="text-xs text-center text-slate-500 mb-3 font-semibold uppercase tracking-wider">Akses Cepat Demo</p>
            <div className="flex justify-center gap-2">
@@ -195,7 +212,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-function Sidebar({ user, onLogout, isOpen, setIsOpen }) {
+function Sidebar({ user, onLogout, isOpen, setIsOpen, activePage, setActivePage }) {
   const menuItems = [
     { icon: <LayoutDashboard size={20} />, label: 'Dashboard', showFor: ['owner', 'admin', 'member'] },
     { icon: <Users size={20} />, label: 'Anggota', showFor: ['owner', 'admin'] },
@@ -212,7 +229,6 @@ function Sidebar({ user, onLogout, isOpen, setIsOpen }) {
 
   return (
     <>
-      {/* Overlay for mobile */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-20 md:hidden transition-opacity"
@@ -234,14 +250,30 @@ function Sidebar({ user, onLogout, isOpen, setIsOpen }) {
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          {menuItems.map((item, index) => (
-            item.showFor.includes(user.role) && (
-              <a key={index} href="#" className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-colors">
+          {menuItems.map((item, index) => {
+            if (!item.showFor.includes(user.role)) return null;
+            
+            const pageId = item.label.toLowerCase();
+            const isActive = activePage === pageId;
+            
+            return (
+              <button 
+                key={index} 
+                onClick={() => {
+                  setActivePage(pageId);
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                  isActive 
+                  ? 'bg-blue-600 text-white' 
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
                 {item.icon}
                 <span className="font-medium">{item.label}</span>
-              </a>
+              </button>
             )
-          ))}
+          })}
         </nav>
         
         <div className="p-4 border-t border-slate-800">
@@ -266,7 +298,7 @@ function Sidebar({ user, onLogout, isOpen, setIsOpen }) {
   );
 }
 
-// --- DASHBOARDS ---
+// --- DASHBOARDS (Tidak ada yang dirubah) ---
 
 function MemberDashboard({ user, loans, transactions, setLoans }) {
   const [showLoanModal, setShowLoanModal] = useState(false);
@@ -289,14 +321,12 @@ function MemberDashboard({ user, loans, transactions, setLoans }) {
 
   return (
     <div className="space-y-6">
-      {/* Saldo Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard title="Total Saldo Simpanan" value={formatRupiah(totalBalance)} icon={<Wallet />} color="bg-blue-500" />
         <StatCard title="Simpanan Wajib" value={formatRupiah(user.balance.wajib)} icon={<DollarSign />} color="bg-teal-500" />
         <StatCard title="Simpanan Sukarela" value={formatRupiah(user.balance.sukarela)} icon={<DollarSign />} color="bg-green-500" />
       </div>
 
-      {/* Quick Actions */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <h3 className="text-lg font-semibold mb-4 text-gray-800">Aksi Cepat</h3>
         <div className="flex flex-wrap gap-4">
@@ -311,7 +341,6 @@ function MemberDashboard({ user, loans, transactions, setLoans }) {
         </div>
       </div>
 
-      {/* Status Pinjaman */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <h3 className="text-lg font-semibold mb-4 text-gray-800">Riwayat Pengajuan Pinjaman</h3>
         {myLoans.length === 0 ? (
@@ -414,7 +443,6 @@ function AdminDashboard({ users, loans, setLoans }) {
 function OwnerDashboard({ users, loans, transactions }) {
   const membersCount = users.filter(u => u.role === 'member').length;
   
-  // Calculate total assets (simplified for demo: sum of all member balances)
   const totalAssets = users.reduce((acc, user) => {
     if (user.role === 'member' && user.balance) {
       return acc + user.balance.pokok + user.balance.wajib + user.balance.sukarela;
@@ -422,12 +450,10 @@ function OwnerDashboard({ users, loans, transactions }) {
     return acc;
   }, 0);
 
-  // Calculate total active loans (approved)
   const totalActiveLoans = loans.filter(l => l.status === 'approved').reduce((acc, l) => acc + l.amount, 0);
 
   return (
     <div className="space-y-6">
-      {/* High-level Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard title="Total Aset (Simpanan)" value={formatRupiah(totalAssets)} icon={<Wallet />} color="bg-indigo-600" />
         <StatCard title="Total Dana Keluar (Pinjaman)" value={formatRupiah(totalActiveLoans)} icon={<DollarSign />} color="bg-rose-500" />
@@ -435,7 +461,6 @@ function OwnerDashboard({ users, loans, transactions }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-         {/* Summary Report */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-semibold mb-4 text-gray-800">Laporan Kas Singkat</h3>
           <div className="space-y-4">
@@ -453,7 +478,6 @@ function OwnerDashboard({ users, loans, transactions }) {
           </div>
         </div>
 
-        {/* Recent Activity */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
            <h3 className="text-lg font-semibold mb-4 text-gray-800">Aktivitas Terbaru</h3>
            <div className="space-y-3">
@@ -475,6 +499,142 @@ function OwnerDashboard({ users, loans, transactions }) {
               })}
            </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// --- NEW PAGES ---
+
+function ManageMembers({ users }) {
+  const members = users.filter(u => u.role === 'member');
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        <h3 className="text-xl font-bold text-gray-800">Daftar Anggota Koperasi</h3>
+        <button className="bg-[#0f172a] text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-sm">
+          <Plus size={18} /> Tambah Anggota
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 text-gray-600 text-sm">
+            <tr>
+              <th className="p-4 font-semibold">Nama Anggota</th>
+              <th className="p-4 font-semibold">Email</th>
+              <th className="p-4 font-semibold">Total Simpanan</th>
+              <th className="p-4 font-semibold">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {members.map(m => (
+              <tr key={m.id} className="hover:bg-gray-50 transition-colors">
+                <td className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">{m.name.charAt(0)}</div>
+                  <span className="font-medium text-gray-800">{m.name}</span>
+                </td>
+                <td className="p-4 text-gray-600 text-sm">{m.email}</td>
+                <td className="p-4 text-sm font-bold text-teal-600">{formatRupiah(m.balance.pokok + m.balance.wajib + m.balance.sukarela)}</td>
+                <td className="p-4">
+                  <button className="text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors">Lihat Detail</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function LoanManagement({ loans, users, currentUser }) {
+  const displayLoans = currentUser.role === 'member' ? loans.filter(l => l.userId === currentUser.id) : loans;
+  
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="p-6 border-b border-gray-100">
+        <h3 className="text-xl font-bold text-gray-800">Manajemen Pinjaman</h3>
+        <p className="text-sm text-gray-500 mt-1">Daftar semua pengajuan pinjaman anggota.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 text-gray-600 text-sm">
+            <tr>
+              <th className="p-4 font-semibold">Peminjam</th>
+              <th className="p-4 font-semibold">Nominal</th>
+              <th className="p-4 font-semibold">Tenor</th>
+              <th className="p-4 font-semibold">Status</th>
+              <th className="p-4 font-semibold">Tanggal</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {displayLoans.length > 0 ? (
+              displayLoans.map(l => (
+                <tr key={l.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-4 font-medium text-gray-800">{users.find(u => u.id === l.userId)?.name || 'Member'}</td>
+                  <td className="p-4 font-semibold text-gray-800">{formatRupiah(l.amount)}</td>
+                  <td className="p-4 text-gray-600 text-sm">{l.tenor} Bulan</td>
+                  <td className="p-4"><StatusBadge status={l.status} /></td>
+                  <td className="p-4 text-sm text-gray-500">{l.date}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="p-8 text-center text-gray-500 italic">Belum ada data pinjaman.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function TransactionHistory({ transactions, users }) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+        <div>
+          <h3 className="text-xl font-bold text-gray-800">Riwayat Transaksi</h3>
+          <p className="text-sm text-gray-500 mt-1">Catatan aliran dana masuk dari anggota.</p>
+        </div>
+        <button className="p-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+          <FileText size={20} />
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 text-gray-600 text-sm">
+            <tr>
+              <th className="p-4 font-semibold">ID Transaksi</th>
+              <th className="p-4 font-semibold">Anggota</th>
+              <th className="p-4 font-semibold">Kategori Simpanan</th>
+              <th className="p-4 font-semibold">Jumlah Disetor</th>
+              <th className="p-4 font-semibold">Tanggal</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {transactions.length > 0 ? (
+              transactions.map(t => (
+                <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-4 text-xs font-mono text-gray-400">#{t.id.toUpperCase()}</td>
+                  <td className="p-4 font-medium text-gray-800">{users.find(u => u.id === t.userId)?.name}</td>
+                  <td className="p-4">
+                    <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md text-xs font-medium capitalize border border-gray-200">
+                      {t.category}
+                    </span>
+                  </td>
+                  <td className="p-4 font-bold text-green-600">+{formatRupiah(t.amount)}</td>
+                  <td className="p-4 text-sm text-gray-500">{t.date}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" className="p-8 text-center text-gray-500 italic">Belum ada transaksi tercatat.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
